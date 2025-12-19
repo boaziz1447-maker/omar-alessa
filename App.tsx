@@ -36,29 +36,23 @@ const App: React.FC = () => {
      return '';
   });
 
-  // Initialize customLogo from localStorage if available, otherwise use default
   const [customLogo, setCustomLogo] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const savedLogo = localStorage.getItem('platform_custom_logo');
-      return savedLogo || LOGO_OMAR;
+      return localStorage.getItem('platform_custom_logo') || LOGO_OMAR;
     }
     return LOGO_OMAR;
   });
 
-  // Initialize MOE Logo from localStorage if available, otherwise use default
   const [moeLogo, setMoeLogo] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const savedMoeLogo = localStorage.getItem('platform_moe_logo');
-      return savedMoeLogo || LOGO_MOE;
+      return localStorage.getItem('platform_moe_logo') || LOGO_MOE;
     }
     return LOGO_MOE;
   });
 
-  // Initialize Rabbit Logo from localStorage if available, otherwise use default
   const [rabbitLogo, setRabbitLogo] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const savedRabbit = localStorage.getItem('platform_rabbit_logo');
-      return savedRabbit || LOGO_RABBIT;
+      return localStorage.getItem('platform_rabbit_logo') || LOGO_RABBIT;
     }
     return LOGO_RABBIT;
   });
@@ -76,17 +70,37 @@ const App: React.FC = () => {
   // Questions Count State
   const [questionsCount, setQuestionsCount] = useState<number>(5);
 
-  const [form, setForm] = useState<LessonDetails>({
-    teacherName: '',
-    schoolName: '',
-    region: 'الرياض',
-    subject: '',
-    lessonTitle: '',
-    gradeLevel: '',
-    content: '',
-    principalName: '',
-    date: new Date().toLocaleDateString('ar-SA'),
+  const [form, setForm] = useState<LessonDetails>(() => {
+    const savedForm = typeof window !== 'undefined' ? localStorage.getItem('platform_lesson_form') : null;
+    if (savedForm) {
+      try {
+        const parsed = JSON.parse(savedForm);
+        return {
+          ...parsed,
+          date: new Date().toLocaleDateString('ar-SA') // Always fresh date
+        };
+      } catch (e) {
+        console.error("Error parsing saved form", e);
+      }
+    }
+    return {
+      teacherName: '',
+      schoolName: '',
+      region: 'الرياض',
+      subject: '',
+      lessonTitle: '',
+      gradeLevel: '',
+      content: '',
+      principalName: '',
+      date: new Date().toLocaleDateString('ar-SA'),
+    };
   });
+
+  // Save form basic details to localStorage (except content/title)
+  useEffect(() => {
+    const { content, lessonTitle, date, ...persistentDetails } = form;
+    localStorage.setItem('platform_lesson_form', JSON.stringify(persistentDetails));
+  }, [form]);
 
   // Check for shared data (Lesson OR Configuration) in URL on load
   useEffect(() => {
@@ -148,14 +162,12 @@ const App: React.FC = () => {
         };
         
         setSelectedStrategy(sharedStrategy);
-        // 'v' parameter controls the view mode (cards, report, game). Default to 'cards' for legacy links.
         setInitialViewMode(decoded.v || 'cards'); 
       } catch (e) {
         console.error("Failed to parse shared data", e);
       }
     }
     
-    // Clean URL if either existed
     if (shareData || configData) {
         window.history.replaceState({}, '', window.location.pathname);
     }
@@ -176,7 +188,6 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Logo = reader.result as string;
-        // Compress image before saving to handle large files/traffic
         const compressed = await compressImage(base64Logo, 200, 0.7);
         setCustomLogo(compressed);
         localStorage.setItem('platform_custom_logo', compressed);
@@ -245,7 +256,6 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,") to get raw base64
         const rawBase64 = base64String.split(',')[1];
         
         const fileData = {
@@ -256,7 +266,6 @@ const App: React.FC = () => {
         
         setAttachedFile(fileData);
 
-        // Auto-extract text from file
         setIsExtractingText(true);
         try {
           const extractedText = await extractTextFromFile(fileData, customApiKey);
@@ -342,7 +351,7 @@ const App: React.FC = () => {
         rabbitLogo={rabbitLogo}
         onBack={() => {
            setSelectedStrategy(null);
-           setInitialViewMode('report'); // Reset mode on back
+           setInitialViewMode('report');
         }}
         initialMode={initialViewMode}
       />
@@ -352,12 +361,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen pb-10 bg-slate-900 text-slate-100 overflow-x-hidden relative flex flex-col">
       
-      {/* Creative Background Elements */}
+      {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#007f5f]/20 to-transparent pointer-events-none" />
       <div className="absolute top-[-100px] right-[-100px] w-96 h-96 bg-[#007f5f]/30 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-100px] left-[-100px] w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Hero Header */}
+      {/* Header */}
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 md:gap-3">
@@ -372,9 +381,7 @@ const App: React.FC = () => {
                     <p className="text-[10px] md:text-xs text-gray-400 hidden sm:block text-right">للتعلم النشط والابتكار التعليمي</p>
                  </div>
             </div>
-            {/* Left Side Actions */}
             <div className="flex items-center gap-3">
-              {/* Settings Button */}
               <button 
                 onClick={handleSettingsClick}
                 className="p-2 text-gray-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
@@ -388,7 +395,7 @@ const App: React.FC = () => {
 
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-4xl relative z-10 flex-grow">
         
-        {/* Intro Section */}
+        {/* Intro */}
         <div className="text-center mb-8 md:mb-10 mt-2 md:mt-4">
             <h2 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-2 md:mb-4 drop-shadow-sm leading-tight">
               مولد استراتيجيات التعلم النشط
@@ -398,9 +405,8 @@ const App: React.FC = () => {
             </p>
         </div>
 
-        {/* Main Form */}
+        {/* Form Area */}
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-4 md:p-8 mb-8 border border-slate-700 relative overflow-hidden">
-             {/* Decorative shine on form */}
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#007f5f] to-transparent opacity-50"></div>
 
             <div className="flex items-center gap-3 mb-6 md:mb-8 text-[#4ade80] border-b border-slate-700 pb-4">
@@ -411,13 +417,10 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
                 <Input name="teacherName" label="اسم المعلم/ة" placeholder="أ. محمد ...." value={form.teacherName} onChange={handleInputChange} />
                 <Input name="principalName" label="اسم مدير/ة المدرسة" placeholder="أ. صالح ...." value={form.principalName} onChange={handleInputChange} />
-                
                 <Input name="schoolName" label="اسم المدرسة" placeholder="ابتدائية ...." value={form.schoolName} onChange={handleInputChange} />
                 <Input name="region" label="إدارة التعليم (المنطقة)" placeholder="الرياض، جدة..." value={form.region} onChange={handleInputChange} />
-                
                 <Input name="subject" label="المادة الدراسية" placeholder="لغتي، رياضيات..." value={form.subject} onChange={handleInputChange} />
                 <Input name="gradeLevel" label="الصف" placeholder="الخامس الابتدائي..." value={form.gradeLevel} onChange={handleInputChange} />
-                
                 <Input name="lessonTitle" label="عنوان الدرس" placeholder="الفاعل ونائب الفاعل..." value={form.lessonTitle} onChange={handleInputChange} />
                 <div className="flex gap-4">
                   <div className="flex-1">
@@ -439,7 +442,6 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Content Input Section with File Upload */}
             <div className="mb-8">
                  <div className="flex items-center justify-between mb-3">
                      <div className="flex items-center gap-2 text-[#4ade80]">
@@ -460,7 +462,6 @@ const App: React.FC = () => {
                         className={`min-h-[150px] text-base md:text-lg bg-slate-900/80 pb-16 transition-all ${isExtractingText ? 'animate-pulse bg-slate-800' : ''}`} 
                     />
                     
-                    {/* Extracting Indicator Overlay */}
                     {isExtractingText && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-lg z-10">
                          <div className="flex flex-col items-center gap-2 text-[#4ade80]">
@@ -470,7 +471,6 @@ const App: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* File Upload Area inside TextArea container */}
                     <div className="absolute bottom-3 right-3 flex items-center gap-2 z-20">
                         {attachedFile ? (
                             <div className="flex items-center gap-2 bg-[#007f5f]/20 border border-[#007f5f] px-3 py-1.5 rounded-lg">
@@ -496,7 +496,7 @@ const App: React.FC = () => {
                         )}
                     </div>
                  </div>
-                 <p className="text-[10px] text-gray-500 mt-2 mr-1">* استخراج النص تلقائي عند الرفع.</p>
+                 <p className="text-[10px] text-gray-500 mt-2 mr-1">💡 يتم حفظ بياناتك الأساسية تلقائياً لاستخدامها لاحقاً.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -512,7 +512,7 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* Results Section */}
+        {/* Results */}
         {strategies.length > 0 && (
             <div className="animate-fade-in-up pb-10">
                 <h3 className="text-xl md:text-2xl font-bold text-white mb-6 md:mb-8 text-center flex items-center justify-center gap-3">
@@ -553,12 +553,12 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* --- PASSWORD MODAL --- */}
+      {/* MODALS */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
            <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 w-full max-w-sm shadow-2xl relative">
               <button onClick={() => setShowPasswordModal(false)} className="absolute top-3 left-3 text-gray-400 hover:text-white"><X size={20}/></button>
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Lock size={18} className="text-[#007f5f]"/> الإعدادات</h3>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 text-right"><Lock size={18} className="text-[#007f5f]"/> الدخول للإعدادات</h3>
               <form onSubmit={verifyPassword}>
                  <div className="mb-4">
                    <label className="block text-sm text-gray-400 mb-1 text-right">الرقم السري</label>
@@ -578,19 +578,18 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* --- SETTINGS MODAL --- */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
            <div className="bg-slate-800 border border-slate-600 rounded-xl p-4 md:p-6 w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto">
               <button onClick={() => setShowSettingsModal(false)} className="absolute top-3 left-3 text-gray-400 hover:text-white"><X size={20}/></button>
               
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-3">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-3 text-right">
                  <Settings size={22} className="text-[#007f5f]"/> إعدادات المنصة
               </h3>
 
               <div className="space-y-6">
                  
-                 {/* Social Media Links in Settings */}
+                 {/* Links */}
                  <div className="grid grid-cols-3 gap-2">
                     <a href="https://t.me/omaralessa" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400 hover:bg-blue-500/20 transition-all">
                         <Send size={20} />
@@ -606,50 +605,51 @@ const App: React.FC = () => {
                     </a>
                  </div>
 
-                 {/* API Key Section */}
+                 {/* API Key */}
                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
-                    <h4 className="font-bold text-yellow-500 text-sm mb-2 flex items-center gap-2">
+                    <h4 className="font-bold text-yellow-500 text-sm mb-2 flex items-center gap-2 text-right">
                         <Key size={16} /> مفتاح Gemini API
                     </h4>
                     <p className="text-[10px] text-gray-400 mb-3 leading-relaxed text-right">
-                        يُفضل وضع مفتاحك الخاص لتجنب توقف الخدمة وقت الذروة.
+                        مفتاحك الخاص لضمان استمرارية الخدمة.
                     </p>
                     <input 
                         type="text" 
-                        placeholder="الصق مفتاح API الخاص بك هنا" 
+                        placeholder="الصق مفتاح API هنا" 
                         className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:border-[#007f5f] outline-none text-right"
                         value={customApiKey}
                         onChange={handleApiKeyChange}
                     />
                  </div>
 
-                 {/* Configuration Sharing */}
+                 {/* Config Share */}
                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
-                     <h4 className="font-bold text-blue-400 text-sm mb-2 flex items-center gap-2">
+                     <h4 className="font-bold text-blue-400 text-sm mb-2 flex items-center gap-2 text-right">
                         <LinkIcon size={16} /> تعميم الإعدادات
                      </h4>
+                     <p className="text-[10px] text-gray-400 mb-3 text-right">مشاركة شعاراتك ومفتاحك مع بقية المستخدمين.</p>
                      <button 
                         onClick={handleShareConfig}
                         className={`w-full py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${configCopied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
                      >
-                        {configCopied ? <><Check size={16}/> تم النسخ</> : <><LinkIcon size={16}/> نسخ رابط التهيئة الموحد</>}
+                        {configCopied ? <><Check size={16}/> تم النسخ</> : <><LinkIcon size={16}/> نسخ رابط التهيئة</>}
                      </button>
                  </div>
 
-                 {/* Platform Logo Section */}
+                 {/* Platform Logo */}
                  <div>
-                    <h4 className="font-bold text-gray-300 text-sm mb-3">شعار المنصة (الأستاذ)</h4>
+                    <h4 className="font-bold text-gray-300 text-sm mb-3 text-right">شعار المنصة (الأستاذ)</h4>
                     <div className="p-4 rounded-xl border border-dashed border-slate-500 bg-slate-900/50 flex flex-col items-center gap-4">
                         <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white p-1 flex items-center justify-center overflow-hidden border-2 border-slate-700 shadow-lg">
                              <img src={customLogo} alt="Current Logo" className="h-full w-full object-contain" />
                         </div>
                         <div className="flex gap-2">
                           <label className="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 border border-slate-600">
-                              <Upload size={14} /> رفع
+                              <Upload size={14} /> رفع جديد
                               <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                           </label>
                           {customLogo !== LOGO_OMAR && (
-                             <button onClick={handleResetLogo} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 p-2 rounded-lg transition-colors">
+                             <button onClick={handleResetLogo} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 p-2 rounded-lg transition-colors" title="استعادة الافتراضي">
                                <RotateCcw size={14} />
                              </button>
                           )}
@@ -657,17 +657,24 @@ const App: React.FC = () => {
                     </div>
                  </div>
 
-                 <button onClick={() => setShowSettingsModal(false)} className="w-full bg-[#007f5f] hover:bg-[#006048] text-white py-3 rounded-lg font-bold transition-colors">
-                   حفظ وإغلاق
+                 <button onClick={() => {
+                    setShowSettingsModal(false);
+                    // Force final confirmation save
+                    localStorage.setItem('platform_api_key', customApiKey);
+                    localStorage.setItem('platform_custom_logo', customLogo);
+                    localStorage.setItem('platform_moe_logo', moeLogo);
+                    localStorage.setItem('platform_rabbit_logo', rabbitLogo);
+                 }} className="w-full bg-[#007f5f] hover:bg-[#006048] text-white py-3 rounded-lg font-bold transition-colors">
+                   حفظ الإعدادات وإغلاق
                  </button>
               </div>
            </div>
         </div>
       )}
 
-      {/* FOOTER with Contact Info */}
+      {/* Footer */}
       <footer className="w-full bg-slate-800/50 border-t border-slate-700 mt-auto">
-        <div className="container mx-auto px-4 py-8 flex flex-col items-center gap-6">
+        <div className="container mx-auto px-4 py-8 flex flex-col items-center gap-6 text-right">
             <div className="flex items-center gap-4 md:gap-6">
                  <a href="https://t.me/omaralessa" target="_blank" rel="noopener noreferrer" className="p-3 bg-slate-700 hover:bg-blue-600 rounded-full text-white transition-all shadow-lg group" title="تيليجرام">
                     <Send size={24} className="group-hover:scale-110 transition-transform" />
